@@ -54,7 +54,7 @@ for column in cub_df.columns:
     scale_x = 1e3
     ticks_x = mticker.FuncFormatter(lambda x, pos: '{0:g}k'.format(x/scale_x))
     ax.xaxis.set_major_formatter(ticks_x)
-    zero_compressed_df.plot(y=column,ax=ax,label='1-HP')
+    zero_compressed_df.plot(y=column,ax=ax,label='0-Compressed HP')
     delta_val=column.split('delta')[1]
     cub_df.plot(y=column, color='red', ax=ax,label='CUB-Sort')
     ax.set(title = "Runtime comparison with δ="+delta_val,
