@@ -13,6 +13,7 @@
 
 using namespace std;
 
+
 // method used while debugging for printing an array
 __global__ void printArray(int* a, int n) {
     for (int i = 0; i < n; i++) {
@@ -84,12 +85,47 @@ void prefix_sum_on_gpu(int* data, int* output, int size) {
     //printf("Successfully prefixed sum");
 }
 
+int* cubsort(int* d_x, int N)
+{
+    // Declare, allocate, and initialize device-accessible pointers for sorting data
+    int  num_items = N;          // e.g., 7
+    int* d_keys_in = d_x;         // e.g., [8, 6, 7, 5, 3, 0, 9]
+    int* d_keys_out;        // e.g., [        ...        ]
+    cudaMalloc(&d_keys_out, sizeof(int) * N);
+    // Determine temporary device storage requirements
+    void* d_temp_storage = NULL;
+    size_t   temp_storage_bytes = 0;
+    cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes, d_keys_in, d_keys_out, num_items);
+    // Allocate temporary storage
+    cudaMalloc(&d_temp_storage, temp_storage_bytes);
+    // Run sorting operation
+    cub::DeviceRadixSort::SortKeys(d_temp_storage, temp_storage_bytes, d_keys_in, d_keys_out, num_items);
+    // d_keys_out            <-- [0, 3, 5, 6, 7, 8, 9]
+    return d_keys_out;
+}
+void test_cubsort(int* d_x, int N) {
+    float milliseconds = 0;
+  
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    int* d_y = cubsort(d_x, N);
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&milliseconds, start, stop);
+
+    printf("Took %f milliseconds using cubsort\n", milliseconds);
+    cudaFree(d_y);
+}
+
 int main()
 {
     //N = number of elements
     //M = maximum element + 1 (histogram size)
-    constexpr int N = 15, M = 100;
-
+    int N, M;
+    cin >> N >> M;
+    float milliseconds = 0;
     size_t bytesN = sizeof(int) * N;
     size_t bytesM = sizeof(int) * M;
 
@@ -104,7 +140,11 @@ int main()
     // d_x is copy of x on gpu
     cudaMalloc(&d_x, bytesN);
     cudaMemcpy(d_x, x.data(), bytesN, cudaMemcpyHostToDevice);
-
+    //start of benchmark
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
     int numThreads = 2;
     int numBlocks = (N + numThreads - 1) / numThreads;
     cudaMalloc(&d_a, bytesM);
@@ -151,16 +191,21 @@ int main()
     //d_y is the final sorted array
     cudaMalloc(&d_y, bytesN);
     prefix_sum_on_gpu(d_b, d_y, N);
-
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    printf("Took %f milliseconds using 0-Compressed\n", milliseconds);
+    test_cubsort(d_x, N);
     cudaMemcpy(s.data(), d_y, bytesN, cudaMemcpyDeviceToHost);
 
     /*------------------------END OF THE GPU COMPUTATION--------------------------*/
+    
 
     // a is the initial array and s is the sorted array.
-    for (auto& element : x) cout << element << " ";
+ /*   for (auto& element : x) cout << element << " ";
     cout << endl;
 
     for (auto& element : s) cout << element << " ";
     cout << endl;
-    return 0;
+    return 0;*/
 }
