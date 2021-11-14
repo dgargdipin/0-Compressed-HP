@@ -83,7 +83,7 @@ for column in speedup_df.columns:
     
 
     
-plt.savefig(os.path.join('plots',timestr_safe,column+"_speedup.png"), bbox_inches='tight',dpi=199)
+plt.savefig(os.path.join('plots',timestr_safe,"speedup.png"), bbox_inches='tight',dpi=199)
 plt.clf()
 
 
